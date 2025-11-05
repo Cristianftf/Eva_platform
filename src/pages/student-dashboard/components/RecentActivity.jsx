@@ -37,33 +37,51 @@ const RecentActivity = ({ activities }) => {
   };
 
   return (
-    <div className="bg-card border border-border rounded-lg p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-foreground">Actividad Reciente</h2>
-        <button className="text-primary hover:text-primary/80 text-sm font-medium">
+    <div className="bg-card border border-border rounded-lg p-3 sm:p-4 md:p-6">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <h2 className="text-base sm:text-lg font-semibold text-foreground">Actividad Reciente</h2>
+        <button className="text-primary hover:text-primary/80 text-xs sm:text-sm font-medium">
           Ver todo
         </button>
       </div>
-      <div className="space-y-4 max-h-96 overflow-y-auto">
+      <div className="space-y-2 sm:space-y-3 md:space-y-4 max-h-[60vh] sm:max-h-96 overflow-y-auto">
         {activities?.map((activity) => (
-          <div key={activity?.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-muted transition-colors duration-200">
-            <div className={`w-8 h-8 rounded-full bg-muted flex items-center justify-center ${getActivityColor(activity?.type)}`}>
-              <Icon name={getActivityIcon(activity?.type)} size={16} />
+          <div 
+            key={activity?.id} 
+            className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg hover:bg-muted/50 transition-all duration-200"
+          >
+            <div 
+              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-muted flex items-center justify-center ${getActivityColor(activity?.type)}`}
+            >
+              <Icon 
+                name={getActivityIcon(activity?.type)} 
+                size={14} 
+                className="sm:scale-110" 
+              />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-foreground">
+              <p className="text-xs sm:text-sm text-foreground line-clamp-2">
                 <span className="font-medium">{activity?.user}</span>
                 <span className="mx-1">{activity?.action}</span>
                 <span className="font-medium">{activity?.target}</span>
               </p>
-              <div className="flex items-center space-x-2 mt-1">
-                <span className="text-xs text-muted-foreground">{activity?.course}</span>
-                <span className="text-xs text-muted-foreground">•</span>
-                <span className="text-xs text-muted-foreground">{formatTimeAgo(activity?.timestamp)}</span>
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1">
+                <span className="text-[10px] sm:text-xs text-muted-foreground line-clamp-1">
+                  {activity?.course}
+                </span>
+                <span className="text-[10px] sm:text-xs text-muted-foreground">•</span>
+                <span className="text-[10px] sm:text-xs text-muted-foreground">
+                  {formatTimeAgo(activity?.timestamp)}
+                </span>
               </div>
             </div>
           </div>
         ))}
+        {!activities?.length && (
+          <div className="text-center py-4 text-sm text-muted-foreground">
+            No hay actividad reciente
+          </div>
+        )}
       </div>
     </div>
   );

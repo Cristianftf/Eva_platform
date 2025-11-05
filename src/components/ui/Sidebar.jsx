@@ -1,11 +1,63 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import Icon from '../AppIcon';
 import Button from './Button';
+import http from '../../config/http';
+import { ENDPOINTS } from '../../config/api';
+import { useAuth } from '../../Context/authHooks';
 
 const Sidebar = ({ isCollapsed = false, onToggle }) => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+
+  const { user } = useAuth();
+
+  const [streak, setStreak] = useState({ daysActive: 0, weeklyGoalPercent: 0 });
+  const [streakLoading, setStreakLoading] = useState(false);
+  const [streakError, setStreakError] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchStreak = async () => {
+      if (!user?.id) return;
+      setStreakLoading(true);
+      try {
+        // Try the recommended endpoint for dashboard stats
+        const resp = await http.get(ENDPOINTS.USERS.DASHBOARD_STATS(user.id));
+        if (!mounted) return;
+        const data = resp.data || {};
+        // Expecting shape: { studyStreakDays: number, weeklyGoalPercent: number }
+        setStreak({
+          daysActive: data.studyStreakDays ?? data.studyStreak ?? 0,
+          weeklyGoalPercent: data.weeklyGoalPercent ?? data.weeklyGoal ?? 0
+        });
+        setStreakError(null);
+      } catch (err) {
+        // If endpoint doesn't exist or fails, fallback to a simple /users/:id/metrics or /users/:id/dashboard
+        try {
+          const alt = await http.get(`/users/${user.id}/metrics`);
+          if (!mounted) return;
+          const ad = alt.data || {};
+          setStreak({
+            daysActive: ad.studyStreakDays ?? ad.studyStreak ?? 0,
+            weeklyGoalPercent: ad.weeklyGoalPercent ?? ad.weeklyGoal ?? 0
+          });
+          setStreakError(null);
+        } catch (err2) {
+          if (!mounted) return;
+          console.warn('Failed fetching streak metrics', err2?.message || err?.message);
+          setStreak({ daysActive: 0, weeklyGoalPercent: 0 });
+          setStreakError(err2?.message || err?.message || 'Error fetching streak');
+        }
+      } finally {
+        if (mounted) setStreakLoading(false);
+      }
+    };
+
+    fetchStreak();
+
+    return () => { mounted = false; };
+  }, [user?.id]);
 
   const navigationItems = [
     {
@@ -144,7 +196,10 @@ const Sidebar = ({ isCollapsed = false, onToggle }) => {
               {!isCollapsed && (
                 <div className="flex-1">
                   <p className="text-sm font-medium text-foreground">Study Streak</p>
-                  <p className="text-xs text-muted-foreground">7 days active</p>
+                  <p className="text-xs text-muted-foreground">
+                    {streakLoading ? 'Cargando...' : `${streak?.daysActive || 0} days active`}
+                    {streakError ? ' • error' : ''}
+                  </p>
                 </div>
               )}
             </div>
@@ -153,12 +208,12 @@ const Sidebar = ({ isCollapsed = false, onToggle }) => {
               <div className="mt-3 bg-muted rounded-lg p-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-foreground">Weekly Goal</span>
-                  <span className="text-xs text-muted-foreground">85%</span>
+                  <span className="text-xs text-muted-foreground">{streakLoading ? '...' : `${streak?.weeklyGoalPercent ?? 0}%`}</span>
                 </div>
                 <div className="w-full bg-background rounded-full h-2">
                   <div 
                     className="bg-success h-2 rounded-full transition-all duration-500 academic-progress-arc"
-                    style={{ width: '85%' }}
+                    style={{ width: `${streak?.weeklyGoalPercent ?? 0}%` }}
                   />
                 </div>
               </div>

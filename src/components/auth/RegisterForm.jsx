@@ -4,6 +4,7 @@ import Button from '../ui/Button';
 import Input from '../ui/Input';
 import Select from '../ui/Select';
 import { Eye, EyeOff, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { useFormValidation } from '../../hooks/useFormValidation';
 
 const RegisterForm = ({ onToggleMode }) => {
   const [formData, setFormData] = useState({
@@ -15,51 +16,29 @@ const RegisterForm = ({ onToggleMode }) => {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   
   const { signUp } = useAuth()
+  const { errors, validateForm, setErrors } = useFormValidation();
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }))
-    setError('')
+    setErrors({});
   }
 
-  const validateForm = () => {
-    if (!formData?.email || !formData?.password || !formData?.confirmPassword || !formData?.fullName) {
-      return 'Todos los campos son obligatorios'
-    }
-
-    if (formData?.password?.length < 6) {
-      return 'La contraseña debe tener al menos 6 caracteres'
-    }
-
-    if (formData?.password !== formData?.confirmPassword) {
-      return 'Las contraseñas no coinciden'
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/?.test(formData?.email)) {
-      return 'Por favor, ingresa un email válido'
-    }
-
-    return null
-  }
 
   const handleSubmit = async (e) => {
     e?.preventDefault()
     
-    const validationError = validateForm()
-    if (validationError) {
-      setError(validationError)
+    if (!validateForm(formData)) {
       return
     }
 
     setIsLoading(true)
-    setError('')
     setSuccess(false)
 
     try {
@@ -69,10 +48,12 @@ const RegisterForm = ({ onToggleMode }) => {
       })
       
       if (error) {
-        if (error?.message?.includes('already registered')) {
-          setError('Este email ya está registrado. Intenta iniciar sesión.')
+        // error puede ser un string o un objeto Error
+        const msg = typeof error === 'string' ? error : (error?.message || '');
+        if (msg.includes('already registered') || msg.includes('already exists')) {
+          setErrors({ email: 'Este email ya está registrado. Intenta iniciar sesión.' });
         } else {
-          setError('Error al crear la cuenta. Intenta nuevamente.')
+          setErrors({ auth: 'Error al crear la cuenta. Intenta nuevamente.' });
         }
       } else {
         setSuccess(true)
@@ -81,7 +62,7 @@ const RegisterForm = ({ onToggleMode }) => {
         }, 2000)
       }
     } catch (err) {
-      setError('Error de conexión. Intenta nuevamente.',err)
+      setErrors({ connection: 'Error de conexión. Intenta nuevamente.' });
     } finally {
       setIsLoading(false)
     }
@@ -120,10 +101,10 @@ const RegisterForm = ({ onToggleMode }) => {
           <p className="text-gray-600 mt-2">Únete a nuestra plataforma educativa</p>
         </div>
 
-        {error && (
+        {(errors.auth || errors.connection) && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md flex items-center gap-2 text-red-700">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
-            <span className="text-sm">{error}</span>
+            <span className="text-sm">{errors.auth || errors.connection}</span>
           </div>
         )}
 
@@ -132,6 +113,7 @@ const RegisterForm = ({ onToggleMode }) => {
             <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-1">
               Nombre Completo
             </label>
+            <div className="space-y-1">
             <Input
               id="fullName"
               type="text"
@@ -139,14 +121,19 @@ const RegisterForm = ({ onToggleMode }) => {
               value={formData?.fullName}
               onChange={(e) => handleInputChange('fullName', e?.target?.value)}
               disabled={isLoading}
-              className="w-full"
+              className={`w-full ${errors.fullName ? 'border-red-500' : ''}`}
             />
+            {errors.fullName && (
+              <p className="text-xs text-red-600">{errors.fullName}</p>
+            )}
+            </div>
           </div>
 
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
               Correo Electrónico
             </label>
+            <div className="space-y-1">
             <Input
               id="email"
               type="email"
@@ -154,8 +141,12 @@ const RegisterForm = ({ onToggleMode }) => {
               value={formData?.email}
               onChange={(e) => handleInputChange('email', e?.target?.value)}
               disabled={isLoading}
-              className="w-full"
+              className={`w-full ${errors.email ? 'border-red-500' : ''}`}
             />
+            {errors.email && (
+              <p className="text-xs text-red-600">{errors.email}</p>
+            )}
+            </div>
           </div>
 
           <div>
@@ -175,6 +166,7 @@ const RegisterForm = ({ onToggleMode }) => {
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
               Contraseña
             </label>
+            <div className="space-y-1">
             <div className="relative">
               <Input
                 id="password"
@@ -183,7 +175,7 @@ const RegisterForm = ({ onToggleMode }) => {
                 value={formData?.password}
                 onChange={(e) => handleInputChange('password', e?.target?.value)}
                 disabled={isLoading}
-                className="w-full pr-10"
+                className={`w-full pr-10 ${errors.password ? 'border-red-500' : ''}`}
               />
               <button
                 type="button"
@@ -198,12 +190,17 @@ const RegisterForm = ({ onToggleMode }) => {
                 )}
               </button>
             </div>
+            {errors.password && (
+              <p className="text-xs text-red-600">{errors.password}</p>
+            )}
+            </div>
           </div>
 
           <div>
             <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
               Confirmar Contraseña
             </label>
+            <div className="space-y-1">
             <div className="relative">
               <Input
                 id="confirmPassword"
@@ -212,7 +209,7 @@ const RegisterForm = ({ onToggleMode }) => {
                 value={formData?.confirmPassword}
                 onChange={(e) => handleInputChange('confirmPassword', e?.target?.value)}
                 disabled={isLoading}
-                className="w-full pr-10"
+                className={`w-full pr-10 ${errors.confirmPassword ? 'border-red-500' : ''}`}
               />
               <button
                 type="button"
@@ -226,6 +223,10 @@ const RegisterForm = ({ onToggleMode }) => {
                   <Eye className="h-4 w-4 text-gray-400" />
                 )}
               </button>
+            </div>
+            {errors.confirmPassword && (
+              <p className="text-xs text-red-600">{errors.confirmPassword}</p>
+            )}
             </div>
           </div>
 

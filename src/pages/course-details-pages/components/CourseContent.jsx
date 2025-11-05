@@ -1,9 +1,33 @@
 import React, { useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
+import http from '../../../config/http';
 
 const CourseContent = ({ modules, onContentSelect }) => {
   const [expandedModules, setExpandedModules] = useState(new Set([1]));
+  const [updatingProgress, setUpdatingProgress] = useState(false);
+
+  // Track content progress
+  const updateProgress = async (lessonId, completed) => {
+    try {
+      setUpdatingProgress(true);
+      const res = await http.put(`/lessons/${lessonId}/progress`, { completed });
+      // Actualización exitosa - el backend debería devolver el nuevo estado
+      const updatedLesson = res.data;
+      console.log('Progress updated:', updatedLesson);
+    } catch (error) {
+      console.error('Error updating progress:', error);
+    } finally {
+      setUpdatingProgress(false);
+    }
+  };
+
+  const handleContentClick = (lesson) => {
+    onContentSelect(lesson);
+    if (!lesson.completed && !lesson.isLocked) {
+      updateProgress(lesson.id, true);
+    }
+  };
 
   const toggleModule = (moduleId) => {
     const newExpanded = new Set(expandedModules);
@@ -77,7 +101,8 @@ const CourseContent = ({ modules, onContentSelect }) => {
                   className="flex items-center justify-between p-4 hover:bg-muted transition-colors duration-200 border-b border-border last:border-b-0"
                 >
                   <button
-                    onClick={() => onContentSelect(lesson)}
+                    onClick={() => handleContentClick(lesson)}
+                    disabled={lesson.isLocked || updatingProgress}
                     className="flex items-center gap-3 flex-1 text-left"
                   >
                     <div className={`w-6 h-6 rounded-full flex items-center justify-center ${

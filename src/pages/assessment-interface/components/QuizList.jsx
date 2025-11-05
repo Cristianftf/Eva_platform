@@ -1,8 +1,55 @@
 import React from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
+import { useQuizList } from '../../../hooks/useAssessment';
 
-const QuizList = ({ quizzes, onStartQuiz, onViewResults }) => {
+const QuizList = () => {
+  const { quizzes, loading, error, refetch } = useQuizList();
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="bg-card border border-border rounded-lg p-6 animate-pulse">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <div className="h-7 bg-muted rounded w-3/4 mb-2"></div>
+                <div className="h-4 bg-muted rounded w-1/2 mb-4"></div>
+                <div className="flex space-x-6">
+                  {[...Array(4)].map((_, j) => (
+                    <div key={j} className="h-4 bg-muted rounded w-24"></div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-8">
+        <Icon name="AlertTriangle" size={48} className="mx-auto mb-4 text-destructive" />
+        <h3 className="text-lg font-semibold mb-2">Error al cargar los exámenes</h3>
+        <p className="text-muted-foreground mb-4">{error}</p>
+        <Button onClick={refetch} variant="outline">
+          Reintentar
+        </Button>
+      </div>
+    );
+  }
+
+  if (!quizzes?.length) {
+    return (
+      <div className="text-center py-8">
+        <Icon name="FileText" size={48} className="mx-auto mb-4 text-muted-foreground" />
+        <h3 className="text-lg font-semibold mb-2">No hay exámenes disponibles</h3>
+        <p className="text-muted-foreground">No se encontraron exámenes para mostrar.</p>
+      </div>
+    );
+  }
   const getStatusColor = (status) => {
     switch (status) {
       case 'completed':
@@ -188,7 +235,7 @@ const QuizList = ({ quizzes, onStartQuiz, onViewResults }) => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => onViewResults(quiz)}
+                    onClick={() => window.location.href = `/assessment/${quiz.id}/results`}
                     iconName="BarChart3"
                     iconPosition="left"
                   >
@@ -200,7 +247,7 @@ const QuizList = ({ quizzes, onStartQuiz, onViewResults }) => {
                   <Button
                     variant="default"
                     size="sm"
-                    onClick={() => onStartQuiz(quiz)}
+                    onClick={() => window.location.href = `/assessment/${quiz.id}`}
                     iconName={quiz?.status === 'in-progress' ? "Play" : "FileText"}
                     iconPosition="left"
                   >
@@ -212,7 +259,7 @@ const QuizList = ({ quizzes, onStartQuiz, onViewResults }) => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => onStartQuiz(quiz)}
+                    onClick={() => window.location.href = `/assessment/${quiz.id}/retake`}
                     iconName="RotateCcw"
                     iconPosition="left"
                   >

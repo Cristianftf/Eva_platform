@@ -1,68 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import Image from '../../../components/AppImage';
+import http from '../../../config/http';
+import { ENDPOINTS } from '../../../config/api';
 
 const CourseManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedCourses, setSelectedCourses] = useState([]);
 
-  const courses = [
-  {
-    id: 'MATH301',
-    title: 'Cálculo Diferencial e Integral',
-    instructor: 'Dr. María González',
-    instructorAvatar: "https://images.unsplash.com/photo-1684262855358-88f296a2cfc2",
-    instructorAvatarAlt: 'Professional woman with brown hair in white blazer smiling at camera',
-    students: 89,
-    status: 'active',
-    progress: 67,
-    lastUpdated: '2025-11-03T10:30:00',
-    modules: 12,
-    assignments: 8
-  },
-  {
-    id: 'PHYS201',
-    title: 'Física Mecánica',
-    instructor: 'Prof. Carlos Ruiz',
-    instructorAvatar: "https://images.unsplash.com/photo-1713946598186-8e28275719b9",
-    instructorAvatarAlt: 'Middle-aged man with glasses and beard in dark suit jacket',
-    students: 124,
-    status: 'active',
-    progress: 45,
-    lastUpdated: '2025-11-02T16:45:00',
-    modules: 15,
-    assignments: 12
-  },
-  {
-    id: 'CHEM101',
-    title: 'Química Orgánica Básica',
-    instructor: 'Dra. Ana López',
-    instructorAvatar: "https://images.unsplash.com/photo-1684262855358-88f296a2cfc2",
-    instructorAvatarAlt: 'Professional woman with blonde hair in navy blue blazer',
-    students: 156,
-    status: 'completed',
-    progress: 100,
-    lastUpdated: '2025-10-28T14:20:00',
-    modules: 10,
-    assignments: 6
-  },
-  {
-    id: 'ENG401',
-    title: 'Ingeniería de Software Avanzada',
-    instructor: 'Dr. Roberto Silva',
-    instructorAvatar: "https://images.unsplash.com/photo-1714974528889-d51109fb6ae9",
-    instructorAvatarAlt: 'Professional man with dark hair in gray suit and tie',
-    students: 67,
-    status: 'draft',
-    progress: 23,
-    lastUpdated: '2025-11-01T09:15:00',
-    modules: 18,
-    assignments: 15
-  }];
+  const [courses, setCourses] = useState([]);
+  const [loadingCourses, setLoadingCourses] = useState(false);
+  const [coursesError, setCoursesError] = useState(null);
+
+  useEffect(() => {
+    const loadCourses = async () => {
+      setLoadingCourses(true);
+      try {
+        const res = await http.get(ENDPOINTS.COURSES.LIST);
+        setCourses(res?.data || []);
+      } catch (err) {
+        console.error('Error loading courses', err);
+        setCoursesError(err?.response?.data?.message || err.message || 'Error cargando cursos');
+      } finally {
+        setLoadingCourses(false);
+      }
+    };
+
+    loadCourses();
+  }, []);
 
 
   const statusOptions = [

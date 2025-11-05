@@ -1,127 +1,84 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from '../../../components/AppIcon';
 import Image from '../../../components/AppImage';
 import Button from '../../../components/ui/Button';
+import http from '../../../config/http';
+import { ENDPOINTS } from '../../../config/api';
 
-const CourseSidebar = ({ onChatToggle, onResourceDownload }) => {
+const CourseSidebar = ({ course, onChatToggle, onResourceDownload }) => {
   const [activeChat, setActiveChat] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
-  const [messages, setMessages] = useState([
-  {
-    id: 1,
-    sender: "María González",
-    avatar: "https://images.unsplash.com/photo-1714917368530-368b8fa918bd",
-    avatarAlt: "Professional headshot of Hispanic woman with shoulder-length dark hair smiling at camera",
-    message: "¿Alguien puede ayudarme con el ejercicio 3 del módulo 2?",
-    timestamp: new Date(Date.now() - 300000),
-    isOnline: true
-  },
-  {
-    id: 2,
-    sender: "Carlos Rodríguez",
-    avatar: "https://images.unsplash.com/photo-1667575949231-fbf430640797",
-    avatarAlt: "Professional headshot of male instructor with beard wearing dark shirt",
-    message: "Claro María, te puedo ayudar. ¿En qué parte específica tienes dudas?",
-    timestamp: new Date(Date.now() - 240000),
-    isOnline: true,
-    isInstructor: true
-  },
-  {
-    id: 3,
-    sender: "Ana Martín",
-    avatar: "https://images.unsplash.com/photo-1648466982925-65dac4ed0814",
-    avatarAlt: "Professional headshot of young woman with blonde hair in business attire",
-    message: "Yo también tengo la misma duda. ¿Podríamos hacer una sesión de estudio grupal?",
-    timestamp: new Date(Date.now() - 180000),
-    isOnline: false
-  }]
-  );
+  const [messages, setMessages] = useState([]);
+  const [resources, setResources] = useState(course?.resources || []);
+  const [studyGroup, setStudyGroup] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const resources = [
-  {
-    id: 1,
-    name: "Guía de React Hooks",
-    type: "PDF",
-    size: "2.4 MB",
-    icon: "FileText",
-    downloadUrl: "#"
-  },
-  {
-    id: 2,
-    name: "Código de Ejemplos",
-    type: "ZIP",
-    size: "15.8 MB",
-    icon: "Archive",
-    downloadUrl: "#"
-  },
-  {
-    id: 3,
-    name: "Presentación del Módulo",
-    type: "PPTX",
-    size: "8.2 MB",
-    icon: "Presentation",
-    downloadUrl: "#"
-  },
-  {
-    id: 4,
-    name: "Ejercicios Prácticos",
-    type: "PDF",
-    size: "1.8 MB",
-    icon: "FileText",
-    downloadUrl: "#"
-  }];
+  useEffect(() => {
+    const loadSidebarData = async () => {
+      if (!course?.id) return;
+      setLoading(true);
+      setError(null);
+      try {
+        // fetch study group
+        const sgRes = await http.get(ENDPOINTS.STUDY_GROUPS.LIST, { params: { courseId: course.id } });
+        setStudyGroup(sgRes?.data || []);
 
+        // fetch resources - prefer course resources if provided
+        if (!course?.resources) {
+          try {
+            const resRes = await http.get(`/courses/${course.id}/resources`);
+            setResources(resRes?.data || []);
+          } catch (resErr) {
+            // endpoint may not exist; leave empty
+            setResources([]);
+          }
+        }
 
-  const studyGroup = [
-  {
-    id: 1,
-    name: "María González",
-    avatar: "https://images.unsplash.com/photo-1714917368530-368b8fa918bd",
-    avatarAlt: "Professional headshot of Hispanic woman with shoulder-length dark hair smiling at camera",
-    status: "online",
-    progress: 85
-  },
-  {
-    id: 2,
-    name: "David López",
-    avatar: "https://images.unsplash.com/photo-1641479160067-5ae7bde244b0",
-    avatarAlt: "Professional headshot of young man with short brown hair in casual shirt",
-    status: "away",
-    progress: 72
-  },
-  {
-    id: 3,
-    name: "Ana Martín",
-    avatar: "https://images.unsplash.com/photo-1648466982925-65dac4ed0814",
-    avatarAlt: "Professional headshot of young woman with blonde hair in business attire",
-    status: "offline",
-    progress: 91
-  },
-  {
-    id: 4,
-    name: "Luis Fernández",
-    avatar: "https://images.unsplash.com/photo-1585066047759-3438c34cf676",
-    avatarAlt: "Professional headshot of man with glasses and beard in business suit",
-    status: "online",
-    progress: 68
-  }];
+        // fetch messages for course
+        try {
+          const msgRes = await http.get(`/courses/${course.id}/messages`);
+          setMessages(msgRes?.data || []);
+        } catch (msgErr) {
+          // fallback to empty
+          setMessages([]);
+        }
+      } catch (err) {
+        console.error('Error loading course sidebar data', err);
+        setError(err?.response?.data?.message || err.message || 'Error cargando datos');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSidebarData();
+  }, [course?.id]);
 
 
   const handleSendMessage = () => {
-    if (chatMessage?.trim()) {
-      const newMessage = {
-        id: messages?.length + 1,
-        sender: "Tú",
-        avatar: "https://images.unsplash.com/photo-1715433493294-3522e8dbe6e1",
-        avatarAlt: "Current user profile photo showing person with friendly smile",
-        message: chatMessage,
-        timestamp: new Date(),
-        isOnline: true,
-        isCurrentUser: true
-      };
-      setMessages([...messages, newMessage]);
-      setChatMessage('');
-    }
+    if (!chatMessage?.trim()) return;
+    const optimistic = {
+      id: `tmp-${Date.now()}`,
+      sender: 'Tú',
+      avatar: null,
+      avatarAlt: null,
+      message: chatMessage,
+      timestamp: new Date(),
+      isCurrentUser: true
+    };
+    setMessages(prev => [...(prev || []), optimistic]);
+    setChatMessage('');
+
+    (async () => {
+      try {
+        if (!course?.id) return;
+        const res = await http.post(`/courses/${course.id}/messages`, { content: chatMessage });
+        setMessages(prev => (prev || []).map(m => (m.id === optimistic.id ? res.data : m)));
+      } catch (err) {
+        console.error('Error sending message', err);
+        setError('Error enviando mensaje');
+      }
+    })();
   };
 
   const getStatusColor = (status) => {

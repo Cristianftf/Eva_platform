@@ -2,117 +2,19 @@ import React, { useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import Image from '../../../components/AppImage';
 import Button from '../../../components/ui/Button';
+import { useChat, useConsultations } from '../../../hooks/useCommunication';
 
 const ChatSidebar = ({ activeTab, onTabChange, selectedChat, onChatSelect }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const { chats, loading: chatsLoading, error: chatsError } = useChat();
+  const { consultations, loading: consultationsLoading, error: consultationsError } = useConsultations();
 
-  const directMessages = [
-  {
-    id: 1,
-    name: "Dr. María González",
-    role: "Profesor",
-    avatar: "https://images.unsplash.com/photo-1704455304918-9096fc53e795",
-    avatarAlt: "Professional headshot of Hispanic woman with dark hair in white lab coat",
-    lastMessage: "¿Tienes alguna pregunta sobre la tarea de matemáticas?",
-    timestamp: new Date(Date.now() - 300000),
-    unread: 2,
-    online: true
-  },
-  {
-    id: 2,
-    name: "Carlos Rodríguez",
-    role: "Estudiante",
-    avatar: "https://images.unsplash.com/photo-1700848237612-8741ef8c15d1",
-    avatarAlt: "Young Hispanic man with beard wearing casual blue shirt smiling",
-    lastMessage: "¡Perfecto! Nos vemos en la biblioteca a las 3 PM",
-    timestamp: new Date(Date.now() - 900000),
-    unread: 0,
-    online: true
-  },
-  {
-    id: 3,
-    name: "Ana Martínez",
-    role: "Estudiante",
-    avatar: "https://images.unsplash.com/photo-1665615837076-9d5ac005529c",
-    avatarAlt: "Young woman with curly brown hair wearing yellow sweater in bright setting",
-    lastMessage: "¿Podrías compartir tus notas de la clase de historia?",
-    timestamp: new Date(Date.now() - 1800000),
-    unread: 1,
-    online: false
-  },
-  {
-    id: 4,
-    name: "Prof. Luis Hernández",
-    role: "Profesor",
-    avatar: "https://images.unsplash.com/photo-1713946598186-8e28275719b9",
-    avatarAlt: "Middle-aged man with glasses wearing dark suit in professional setting",
-    lastMessage: "La fecha límite para el proyecto se ha extendido hasta el viernes",
-    timestamp: new Date(Date.now() - 3600000),
-    unread: 0,
-    online: false
-  }];
+  // Derivar listas a partir de `chats` que provee el hook
+  const directMessages = Array.isArray(chats) ? chats.filter(chat => !chat.isGroup) : [];
+  const groupChats = Array.isArray(chats) ? chats.filter(chat => chat.isGroup) : [];
 
-
-  const groupChats = [
-  {
-    id: 5,
-    name: "Matemáticas Avanzadas - Grupo A",
-    type: "course",
-    avatar: "https://images.unsplash.com/photo-1631047085941-a29e9730a7e6",
-    avatarAlt: "Mathematics equations and formulas written on blackboard with chalk",
-    lastMessage: "Elena: ¿Alguien puede explicar el teorema de Pitágoras?",
-    timestamp: new Date(Date.now() - 600000),
-    unread: 5,
-    members: 24,
-    online: true
-  },
-  {
-    id: 6,
-    name: "Grupo de Estudio - Historia",
-    type: "study",
-    avatar: "https://images.unsplash.com/photo-1552879426-64db141e378e",
-    avatarAlt: "Stack of old history books with vintage appearance on wooden table",
-    lastMessage: "Miguel: Reunión mañana a las 4 PM en la sala 205",
-    timestamp: new Date(Date.now() - 1200000),
-    unread: 3,
-    members: 8,
-    online: true
-  },
-  {
-    id: 7,
-    name: "Física Cuántica - Discusión",
-    type: "course",
-    avatar: "https://images.unsplash.com/photo-1601429675201-f66be94607bb",
-    avatarAlt: "Physics laboratory equipment with quantum mechanics diagrams on whiteboard",
-    lastMessage: "Dr. Pérez: Nuevos recursos disponibles en la plataforma",
-    timestamp: new Date(Date.now() - 2400000),
-    unread: 0,
-    members: 18,
-    online: false
-  }];
-
-
-  const professorConsultations = [
-  {
-    id: 8,
-    name: "Consulta - Dr. García",
-    type: "consultation",
-    avatar: "https://images.unsplash.com/photo-1666886573600-61c634663827",
-    avatarAlt: "Professional woman doctor in white coat with stethoscope in medical office",
-    nextSession: "Hoy 15:30",
-    status: "confirmed",
-    subject: "Revisión de Tesis"
-  },
-  {
-    id: 9,
-    name: "Consulta - Prof. López",
-    type: "consultation",
-    avatar: "https://images.unsplash.com/photo-1714974528885-f7f9c774ed7a",
-    avatarAlt: "Professional man in dark suit with tie in academic office setting",
-    nextSession: "Mañana 10:00",
-    status: "pending",
-    subject: "Proyecto Final"
-  }];
+  // Usar consultas obtenidas desde el hook (si no hay, caer en arreglo vacío)
+  const professorConsultations = Array.isArray(consultations) ? consultations : [];
 
 
   const formatTime = (date) => {
@@ -228,45 +130,67 @@ const ChatSidebar = ({ activeTab, onTabChange, selectedChat, onChatSelect }) => 
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
         {activeTab === 'messages' &&
         <>
-            {filteredDirectMessages?.length > 0 ?
-          filteredDirectMessages?.map(renderChatItem) :
-
-          <div className="text-center py-8">
-                <Icon name="MessageSquare" size={48} className="mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No se encontraron mensajes</p>
-              </div>
-          }
-          </>
+          {chatsLoading ? (
+            <div className="text-center py-8">
+              <Icon name="Loader" size={32} className="animate-spin mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">Cargando mensajes...</p>
+            </div>
+          ) : chatsError ? (
+            <div className="text-center py-8 text-red-600">{String(chatsError)}</div>
+          ) : filteredDirectMessages?.length > 0 ? (
+            filteredDirectMessages?.map(renderChatItem)
+          ) : (
+            <div className="text-center py-8">
+              <Icon name="MessageSquare" size={48} className="mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">No se encontraron mensajes</p>
+            </div>
+          )}
+        </>
         }
 
         {activeTab === 'groups' &&
         <>
-            {filteredGroupChats?.length > 0 ?
-          filteredGroupChats?.map(renderChatItem) :
-
-          <div className="text-center py-8">
-                <Icon name="Users" size={48} className="mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No se encontraron grupos</p>
-              </div>
-          }
-          </>
+          {chatsLoading ? (
+            <div className="text-center py-8">
+              <Icon name="Loader" size={32} className="animate-spin mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">Cargando grupos...</p>
+            </div>
+          ) : chatsError ? (
+            <div className="text-center py-8 text-red-600">{String(chatsError)}</div>
+          ) : filteredGroupChats?.length > 0 ? (
+            filteredGroupChats?.map(renderChatItem)
+          ) : (
+            <div className="text-center py-8">
+              <Icon name="Users" size={48} className="mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">No se encontraron grupos</p>
+            </div>
+          )}
+        </>
         }
 
         {activeTab === 'consultations' &&
         <>
-            {professorConsultations?.map((consultation) =>
-          <div
-            key={consultation?.id}
-            onClick={() => onChatSelect(consultation)}
-            className={`p-3 rounded-lg cursor-pointer transition-all duration-200 hover:bg-muted ${
-            selectedChat?.id === consultation?.id ? 'bg-primary text-primary-foreground' : ''}`
-            }>
+          {consultationsLoading ? (
+            <div className="text-center py-8">
+              <Icon name="Loader" size={32} className="animate-spin mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">Cargando consultas...</p>
+            </div>
+          ) : consultationsError ? (
+            <div className="text-center py-8 text-red-600">{String(consultationsError)}</div>
+          ) : (
+            professorConsultations?.map((consultation) => (
+              <div
+                key={consultation?.id}
+                onClick={() => onChatSelect(consultation)}
+                className={`p-3 rounded-lg cursor-pointer transition-all duration-200 hover:bg-muted ${
+                  selectedChat?.id === consultation?.id ? 'bg-primary text-primary-foreground' : ''}`
+                }>
 
                 <div className="flex items-center space-x-3">
                   <Image
-                src={consultation?.avatar}
-                alt={consultation?.avatarAlt}
-                className="w-12 h-12 rounded-full object-cover" />
+                    src={consultation?.avatar}
+                    alt={consultation?.avatarAlt}
+                    className="w-12 h-12 rounded-full object-cover" />
 
                   <div className="flex-1">
                     <h4 className="font-medium text-sm">{consultation?.name}</h4>
@@ -275,14 +199,15 @@ const ChatSidebar = ({ activeTab, onTabChange, selectedChat, onChatSelect }) => 
                       <Icon name="Clock" size={12} className="mr-1 opacity-60" />
                       <span className="text-xs opacity-60">{consultation?.nextSession}</span>
                       <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
-                  consultation?.status === 'confirmed' ? 'bg-success text-success-foreground' : 'bg-warning text-warning-foreground'}`
-                  }>
+                        consultation?.status === 'confirmed' ? 'bg-success text-success-foreground' : 'bg-warning text-warning-foreground'}`
+                      }>
                         {consultation?.status === 'confirmed' ? 'Confirmada' : 'Pendiente'}
                       </span>
                     </div>
                   </div>
                 </div>
               </div>
+            ))
           )}
           </>
         }

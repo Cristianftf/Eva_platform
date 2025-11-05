@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
+import { useProfile } from '../../../hooks/useProfile';
 
 const GoalTracker = () => {
   const [showAddGoal, setShowAddGoal] = useState(false);
@@ -30,106 +31,22 @@ const GoalTracker = () => {
     { value: 'projects', label: 'Proyectos' }
   ];
 
-  const goals = [
-    {
-      id: 1,
-      title: "Mantener Promedio Superior a 9.0",
-      description: "Alcanzar y mantener un promedio general superior a 9.0 durante todo el semestre",
-      category: "academic",
-      categoryLabel: "Académico",
-      targetValue: 9.0,
-      currentValue: 8.7,
-      unit: "puntos",
-      targetDate: "2024-12-15",
-      progress: 87,
-      status: "in_progress",
-      icon: "Target",
-      color: "text-blue-600",
-      bgColor: "bg-blue-50",
-      borderColor: "border-blue-200"
-    },
-    {
-      id: 2,
-      title: "Completar Certificación en React",
-      description: "Obtener certificación oficial en desarrollo con React y tecnologías relacionadas",
-      category: "certification",
-      categoryLabel: "Certificaciones",
-      targetValue: 100,
-      currentValue: 65,
-      unit: "porcentaje",
-      targetDate: "2024-11-30",
-      progress: 65,
-      status: "in_progress",
-      icon: "Award",
-      color: "text-purple-600",
-      bgColor: "bg-purple-50",
-      borderColor: "border-purple-200"
-    },
-    {
-      id: 3,
-      title: "Estudiar 150 Horas Este Mes",
-      description: "Dedicar al menos 150 horas de estudio efectivo durante el mes de noviembre",
-      category: "personal",
-      categoryLabel: "Personal",
-      targetValue: 150,
-      currentValue: 89,
-      unit: "horas",
-      targetDate: "2024-11-30",
-      progress: 59,
-      status: "in_progress",
-      icon: "Clock",
-      color: "text-green-600",
-      bgColor: "bg-green-50",
-      borderColor: "border-green-200"
-    },
-    {
-      id: 4,
-      title: "Dominar JavaScript Avanzado",
-      description: "Completar todos los módulos del curso de JavaScript avanzado con calificación superior a 8.5",
-      category: "skill",
-      categoryLabel: "Habilidades",
-      targetValue: 8.5,
-      currentValue: 9.2,
-      unit: "puntos",
-      targetDate: "2024-10-31",
-      progress: 100,
-      status: "completed",
-      icon: "CheckCircle",
-      color: "text-green-600",
-      bgColor: "bg-green-50",
-      borderColor: "border-green-200"
-    },
-    {
-      id: 5,
-      title: "Participar en 20 Discusiones Grupales",
-      description: "Contribuir activamente en al menos 20 discusiones grupales diferentes",
-      category: "academic",
-      categoryLabel: "Académico",
-      targetValue: 20,
-      currentValue: 12,
-      unit: "participaciones",
-      targetDate: "2024-12-01",
-      progress: 60,
-      status: "in_progress",
-      icon: "MessageSquare",
-      color: "text-orange-600",
-      bgColor: "bg-orange-50",
-      borderColor: "border-orange-200"
-    }
-  ];
+  const { goals: profileGoals = [], addGoal, updateGoal, loading } = useProfile();
+  const goals = profileGoals || [];
 
-  const handleAddGoal = () => {
-    // Here you would typically save the goal to your backend
-    console.log('New goal:', newGoal);
-    setShowAddGoal(false);
-    setNewGoal({
-      title: '',
-      description: '',
-      category: '',
-      targetDate: '',
-      targetValue: '',
-      unit: ''
-    });
+  useEffect(() => {
+    // reset newGoal when goals change
+    if (!goals?.length) return;
+  }, [goals]);
+
+  const handleAddGoal = async () => {
+    try {
+      await addGoal(newGoal);
+      setShowAddGoal(false);
+      setNewGoal({ title: '', description: '', category: '', targetDate: '', targetValue: '', unit: '' });
+    } catch (err) {
+      console.error('Error adding goal:', err);
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -324,11 +241,17 @@ const GoalTracker = () => {
                   />
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" className="flex-1">
+                  <Button variant="ghost" size="sm" className="flex-1" onClick={() => console.log('Open edit modal', goal)}>
                     <Icon name="Edit" size={14} className="mr-1" />
                     Editar
                   </Button>
-                  <Button variant="ghost" size="sm" className="flex-1">
+                  <Button variant="ghost" size="sm" className="flex-1" onClick={async () => {
+                    try {
+                      await updateGoal(goal?.id, { ...goal, progress: Math.min((goal?.progress || 0) + 5, 100) });
+                    } catch (err) {
+                      console.error('Error updating goal:', err);
+                    }
+                  }}>
                     <Icon name="TrendingUp" size={14} className="mr-1" />
                     Actualizar
                   </Button>

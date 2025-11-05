@@ -1,102 +1,27 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Icon from '../../../components/AppIcon';
 import Image from '../../../components/AppImage';
 import Button from '../../../components/ui/Button';
+import { useChat } from '../../../hooks/useCommunication';
 
 const ChatWindow = ({ selectedChat }) => {
   const [message, setMessage] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const messagesEndRef = useRef(null);
-
-  const messages = useMemo(() => [
-    {
-      id: 1,
-      sender: "Dr. María González",
-      avatar: "https://images.unsplash.com/photo-1704455304918-9096fc53e795",
-      avatarAlt: "Professional headshot of Hispanic woman with dark hair in white lab coat",
-      content: "Hola Alex, espero que estés bien. ¿Has tenido oportunidad de revisar los ejercicios de cálculo que asigné la semana pasada?",
-      timestamp: new Date(Date.now() - 3600000),
-      isOwn: false,
-      type: 'text'
-    },
-    {
-      id: 2,
-      sender: "Tú",
-      content: "¡Hola profesora! Sí, he estado trabajando en ellos. Tengo algunas dudas sobre los límites infinitos.",
-      timestamp: new Date(Date.now() - 3300000),
-      isOwn: true,
-      type: 'text'
-    },
-    {
-      id: 3,
-      sender: "Dr. María González",
-      avatar: "https://images.unsplash.com/photo-1704455304918-9096fc53e795",
-      avatarAlt: "Professional headshot of Hispanic woman with dark hair in white lab coat",
-      content: "Perfecto, es normal tener dudas con ese tema. ¿Podrías ser más específica sobre qué parte te resulta más difícil?",
-      timestamp: new Date(Date.now() - 3000000),
-      isOwn: false,
-      type: 'text'
-    },
-    {
-      id: 4,
-      sender: "Tú",
-      content: "Principalmente cuando tengo que evaluar límites que tienden a infinito con funciones racionales.",
-      timestamp: new Date(Date.now() - 2700000),
-      isOwn: true,
-      type: 'text'
-    },
-    {
-      id: 5,
-      sender: "Dr. María González",
-      avatar: "https://images.unsplash.com/photo-1704455304918-9096fc53e795",
-      avatarAlt: "Professional headshot of Hispanic woman with dark hair in white lab coat",
-      content: "Te voy a compartir un documento que explica paso a paso cómo resolver este tipo de límites.",
-      timestamp: new Date(Date.now() - 2400000),
-      isOwn: false,
-      type: 'text'
-    },
-    { 
-      id: 6,
-      sender: "Dr. María González",
-      avatar: "https://images.unsplash.com/photo-1704455304918-9096fc53e795",
-      avatarAlt: "Professional headshot of Hispanic woman with dark hair in white lab coat",
-      attachment: {
-        type: 'file',
-        name: 'Límites_Infinitos_Guía.pdf',
-        size: '2.4 MB',
-        icon: 'FileText'
-      },
-      timestamp: new Date(Date.now() - 2100000),
-      isOwn: false,
-      type: 'file'
-    },
-    {
-      id: 7,
-      sender: "Tú",
-      content: "¡Muchas gracias profesora! Lo revisaré esta tarde y le haré saber si tengo más preguntas.",
-      timestamp: new Date(Date.now() - 1800000),
-      isOwn: true,
-      type: 'text'
-    },
-    {
-      id: 8,
-      sender: "Dr. María González",
-      avatar: "https://images.unsplash.com/photo-1704455304918-9096fc53e795",
-      avatarAlt: "Professional headshot of Hispanic woman with dark hair in white lab coat",
-      content: "Excelente. También recuerda que tengo horario de consulta los martes y jueves de 2 a 4 PM si necesitas ayuda adicional.",
-      timestamp: new Date(Date.now() - 1500000),
-      isOwn: false,
-      type: 'text'
-    },
-    {
-      id: 9,
-      sender: "Tú",
-      content: "Perfecto, lo tendré en cuenta. ¡Que tenga un buen día! 😊",
-      timestamp: new Date(Date.now() - 900000),
-      isOwn: true,
-      type: 'text'
-    }
-  ], []); // Sin dependencias ya que los mensajes son estáticos
+  
+  const { 
+    messages, 
+    loading, 
+    error,
+    sendMessage: sendMessageToBackend,
+    setActiveChat
+  } = useChat();
+  
+  // Cuando cambia la conversación seleccionada, avisar al hook para que traiga los mensajes
+  React.useEffect(() => {
+    if (selectedChat) setActiveChat(selectedChat);
+  }, [selectedChat, setActiveChat]);
+  // messages se proveen desde el hook `useChat` (se elimina el mock embebido)
 
 
   const emojis = ['😊', '👍', '❤️', '😂', '🤔', '👏', '🙏', '💡', '📚', '✅'];
@@ -137,18 +62,22 @@ const ChatWindow = ({ selectedChat }) => {
     });
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (message?.trim()) {
-      // Here you would typically send the message to your backend
-      console.log('Sending message:', message);
-      setMessage('');
+      try {
+        await sendMessageToBackend(selectedChat.id, message);
+        setMessage('');
+      } catch (error) {
+        console.error('Error al enviar mensaje:', error);
+      }
     }
   };
 
-  const handleKeyPress = (e) => {
+  const handleKeyPress = async (e) => {
     if (e?.key === 'Enter' && !e?.shiftKey) {
       e?.preventDefault();
-      handleSendMessage();
+      await handleSendMessage();
+      scrollToBottom();
     }
   };
 

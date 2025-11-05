@@ -1,116 +1,13 @@
 import React, { useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
+import { useProfile } from '../../../hooks/useProfile';
 
 const AchievementBadges = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
 
-  const achievements = [
-    {
-      id: 1,
-      title: "Primer Curso Completado",
-      description: "Completaste tu primer curso con éxito",
-      icon: "Trophy",
-      color: "text-yellow-500",
-      bgColor: "bg-yellow-50",
-      borderColor: "border-yellow-200",
-      category: "completion",
-      earned: true,
-      earnedDate: "15 Oct 2024",
-      rarity: "common"
-    },
-    {
-      id: 2,
-      title: "Estudiante Destacado",
-      description: "Obtuviste calificaciones superiores a 9.0 en 3 cursos consecutivos",
-      icon: "Star",
-      color: "text-purple-500",
-      bgColor: "bg-purple-50",
-      borderColor: "border-purple-200",
-      category: "performance",
-      earned: true,
-      earnedDate: "28 Oct 2024",
-      rarity: "rare"
-    },
-    {
-      id: 3,
-      title: "Colaborador Activo",
-      description: "Participaste en más de 50 discusiones grupales",
-      icon: "Users",
-      color: "text-blue-500",
-      bgColor: "bg-blue-50",
-      borderColor: "border-blue-200",
-      category: "participation",
-      earned: true,
-      earnedDate: "02 Nov 2024",
-      rarity: "uncommon"
-    },
-    {
-      id: 4,
-      title: "Madrugador",
-      description: "Completaste 10 sesiones de estudio antes de las 8:00 AM",
-      icon: "Sunrise",
-      color: "text-orange-500",
-      bgColor: "bg-orange-50",
-      borderColor: "border-orange-200",
-      category: "habits",
-      earned: true,
-      earnedDate: "20 Oct 2024",
-      rarity: "uncommon"
-    },
-    {
-      id: 5,
-      title: "Mentor Estudiantil",
-      description: "Ayudaste a 5 compañeros a mejorar sus calificaciones",
-      icon: "Heart",
-      color: "text-red-500",
-      bgColor: "bg-red-50",
-      borderColor: "border-red-200",
-      category: "social",
-      earned: false,
-      progress: 60,
-      rarity: "epic"
-    },
-    {
-      id: 6,
-      title: "Racha de Fuego",
-      description: "Mantuviste una racha de estudio de 30 días consecutivos",
-      icon: "Flame",
-      color: "text-red-600",
-      bgColor: "bg-red-50",
-      borderColor: "border-red-200",
-      category: "habits",
-      earned: false,
-      progress: 23,
-      rarity: "legendary"
-    },
-    {
-      id: 7,
-      title: "Explorador de Conocimiento",
-      description: "Completaste cursos en 5 áreas diferentes",
-      icon: "Compass",
-      color: "text-green-500",
-      bgColor: "bg-green-50",
-      borderColor: "border-green-200",
-      category: "exploration",
-      earned: false,
-      progress: 80,
-      rarity: "rare"
-    },
-    {
-      id: 8,
-      title: "Perfeccionista",
-      description: "Obtuviste 100% en 10 evaluaciones diferentes",
-      icon: "Target",
-      color: "text-indigo-500",
-      bgColor: "bg-indigo-50",
-      borderColor: "border-indigo-200",
-      category: "performance",
-      earned: false,
-      progress: 40,
-      rarity: "epic"
-    }
-  ];
+  const { achievements: profileAchievements = [], loading } = useProfile();
+  const achievements = profileAchievements || [];
 
   const categories = [
     { id: 'all', name: 'Todos', icon: 'Grid3X3' },
@@ -137,8 +34,8 @@ const AchievementBadges = () => {
     ? achievements 
     : achievements?.filter(achievement => achievement?.category === selectedCategory);
 
-  const earnedCount = achievements?.filter(a => a?.earned)?.length;
-  const totalCount = achievements?.length;
+  const earnedCount = achievements?.filter(a => a?.earned)?.length || 0;
+  const totalCount = achievements?.length || 0;
 
   return (
     <div className="bg-card rounded-lg border border-border academic-shadow p-6">

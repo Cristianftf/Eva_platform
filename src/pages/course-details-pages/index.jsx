@@ -14,15 +14,19 @@ import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import axios from 'axios';
 import { useAuth } from '../../Context/AuthContext';
+import CoursesCatalog from './components/CoursesCatalog';
  
 const CourseDetailPages = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedContent, setSelectedContent] = useState(null);
-  const [isEnrolled, setIsEnrolled] = useState(true);
+  const [isEnrolled, setIsEnrolled] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showCourseSidebar, setShowCourseSidebar] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Use AuthContext to get user info
+  const { user } = useAuth();
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
   const client = axios.create({ baseURL: API_URL });
@@ -36,6 +40,28 @@ const CourseDetailPages = () => {
   // read course id from query: ?course=ID
   const params = new URLSearchParams(window.location.search);
   const courseId = params.get('course');
+
+  // If no courseId provided, render a courses catalog (list) instead
+  if (!courseId) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="flex pt-16">
+          <Sidebar
+            isCollapsed={sidebarCollapsed}
+            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+
+          <main className={`flex-1 transition-all duration-300 ${
+            sidebarCollapsed ? 'ml-16' : 'ml-64'
+          }`}>
+            <div className="px-3 sm:px-4 md:px-6 py-4 sm:py-5 md:py-6 max-w-7xl mx-auto">
+              <CoursesCatalog />
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   useEffect(() => {
     if (!courseId) {
@@ -142,9 +168,14 @@ const CourseDetailPages = () => {
 
   const [courseStatsData, setCourseStatsData] = useState({});
 
-  const handleEnroll = () => {
-    // NOTE: enrollment endpoint not implemented yet; toggle locally
-    setIsEnrolled(true);
+  const handleEnroll = async () => {
+    try {
+      await client.post(`/courses/${courseId}/enroll`);
+      setIsEnrolled(true);
+    } catch (err) {
+      console.error('Error enrolling in course', err);
+      setError(err?.response?.data?.message || err.message || 'Error al inscribirse en el curso');
+    }
   };
 
   const handleContentSelect = (content) => {
@@ -155,8 +186,6 @@ const CourseDetailPages = () => {
     console.log('Submitting assignment:', assignmentId);
     // Handle assignment submission logic
   };
-
-  const { user } = useAuth();
 
   const handleCreatePost = async (postData) => {
     try {

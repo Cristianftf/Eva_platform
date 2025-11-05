@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/ui/Header';
 import Sidebar from '../../components/ui/Sidebar';
@@ -11,152 +11,37 @@ import QuestionDisplay from './components/QuestionDisplay';
 import QuizReview from './components/QuizReview';
 import QuizResults from './components/QuizResults';
 import QuizList from './components/QuizList';
+import { useQuizList } from '../../hooks/useAssessment';
 
 const AssessmentInterface = () => {
   const navigate = useNavigate();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [currentView, setCurrentView] = useState('list'); // list, quiz, review, results
-  const [currentQuiz, setCurrentQuiz] = useState(null);
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState({});
-  const [flaggedQuestions, setFlaggedQuestions] = useState([]);
-  const [timeRemaining, setTimeRemaining] = useState(0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [filterSubject, setFilterSubject] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
+  
+  // UI State
+  const [uiState, setUiState] = useState({
+    sidebarCollapsed: false,
+    currentView: 'list', // list, quiz, review, results
+    isSubmitting: false,
+    loading: false,
+    error: null
+  });
 
-  // Mock quiz data
-  const mockQuizzes = [
-    {
-      id: 1,
-      title: "Examen Final - Cálculo Diferencial",
-      description: "Evaluación comprensiva de límites, derivadas y aplicaciones del cálculo diferencial. Incluye problemas teóricos y prácticos.",
-      subject: "Matemáticas",
-      instructor: "Dr. María González",
-      questionCount: 25,
-      duration: 120,
-      totalPoints: 100,
-      difficulty: "hard",
-      status: "available",
-      dueDate: "15 Nov 2025",
-      attempts: 0,
-      maxAttempts: 2,
-      allowRetake: true,
-      timed: true,
-      instructions: "Lee cada pregunta cuidadosamente. Puedes marcar preguntas para revisar más tarde. El examen se guardará automáticamente cada 30 segundos.",
-      questions: [
-        {
-          id: 1,
-          type: "multiple-choice",
-          question: "¿Cuál es la derivada de f(x) = x³ + 2x² - 5x + 3?",
-          description: "Aplica las reglas básicas de derivación.",
-          points: 4,
-          options: [
-            { id: "a", text: "3x² + 4x - 5" },
-            { id: "b", text: "3x² + 2x - 5" },
-            { id: "c", text: "x³ + 4x - 5" },
-            { id: "d", text: "3x² + 4x + 3" }
-          ],
-          correctAnswer: "a",
-          hint: "Recuerda que la derivada de xⁿ es n·xⁿ⁻¹"
-        },
-        {
-          id: 2,
-          type: "true-false",
-          question: "El límite de una función siempre existe si la función es continua en ese punto.",
-          points: 2,
-          correctAnswer: "true"
-        },
-        {
-          id: 3,
-          type: "short-answer",
-          question: "Calcula el límite: lim(x→0) (sin(x)/x)",
-          description: "Expresa tu respuesta como un número decimal o fracción.",
-          points: 5,
-          correctAnswer: "1"
-        },
-        {
-          id: 4,
-          type: "essay",
-          question: "Explica el teorema del valor medio y proporciona un ejemplo de su aplicación.",
-          description: "Tu respuesta debe incluir el enunciado del teorema y un ejemplo práctico.",
-          points: 10
-        },
-        {
-          id: 5,
-          type: "multiple-select",
-          question: "¿Cuáles de las siguientes funciones son derivables en x = 0?",
-          points: 6,
-          options: [
-            { id: "a", text: "f(x) = |x|" },
-            { id: "b", text: "f(x) = x²" },
-            { id: "c", text: "f(x) = sin(x)" },
-            { id: "d", text: "f(x) = √x" }
-          ],
-          correctAnswers: ["b", "c"]
-        }
-      ]
-    },
-    {
-      id: 2,
-      title: "Quiz - Introducción a la Programación",
-      description: "Evaluación de conceptos básicos de programación, variables, estructuras de control y funciones.",
-      subject: "Informática",
-      instructor: "Prof. Carlos Ruiz",
-      questionCount: 15,
-      duration: 45,
-      totalPoints: 60,
-      difficulty: "easy",
-      status: "completed",
-      dueDate: "10 Nov 2025",
-      attempts: 1,
-      maxAttempts: 3,
-      allowRetake: true,
-      timed: true,
-      lastScore: {
-        score: 52,
-        percentage: 87,
-        grade: "B+",
-        completedAt: "08 Nov 2025, 14:30"
-      }
-    },
-    {
-      id: 3,
-      title: "Examen Parcial - Historia Contemporánea",
-      description: "Evaluación sobre los eventos históricos del siglo XX, incluyendo las guerras mundiales y la Guerra Fría.",
-      subject: "Historia",
-      instructor: "Dra. Ana Martínez",
-      questionCount: 30,
-      duration: 90,
-      totalPoints: 120,
-      difficulty: "medium",
-      status: "in-progress",
-      dueDate: "12 Nov 2025",
-      attempts: 1,
-      maxAttempts: 1,
-      allowRetake: false,
-      timed: true,
-      timeRemaining: "45:30"
-    },
-    {
-      id: 4,
-      title: "Práctica - Química Orgánica",
-      description: "Ejercicios de práctica sobre nomenclatura, reacciones y mecanismos en química orgánica.",
-      subject: "Química",
-      instructor: "Dr. Luis Fernández",
-      questionCount: 20,
-      duration: 60,
-      totalPoints: 80,
-      difficulty: "medium",
-      status: "locked",
-      dueDate: "20 Nov 2025",
-      attempts: 0,
-      maxAttempts: 5,
-      allowRetake: true,
-      timed: false,
-      lockReason: "Debes completar el módulo de teoría antes de acceder a este examen."
-    }
-  ];
+  // Assessment State
+  const [assessmentState, setAssessmentState] = useState({
+    currentQuiz: null,
+    currentQuestion: 0,
+    answers: {},
+    flaggedQuestions: [],
+    timeRemaining: 0,
+    results: null
+  });
+
+  // Filter State
+  const [filterState, setFilterState] = useState({
+    subject: 'all',
+    status: 'all'
+  });
+
+  const { quizzes: apiQuizzes, loading: quizzesLoading, error: quizzesError } = useQuizList();
 
   const subjectOptions = [
     { value: 'all', label: 'Todas las materias' },
@@ -174,159 +59,342 @@ const AssessmentInterface = () => {
     { value: 'locked', label: 'Bloqueado' }
   ];
 
-  // Filter quizzes based on selected filters
-  const filteredQuizzes = mockQuizzes?.filter(quiz => {
-    const matchesSubject = filterSubject === 'all' || quiz?.subject === filterSubject;
-    const matchesStatus = filterStatus === 'all' || quiz?.status === filterStatus;
-    return matchesSubject && matchesStatus;
-  });
+  // Filtrado de exámenes con memoization (datos desde la API)
+  const filteredQuizzes = useMemo(() => {
+    const source = apiQuizzes || [];
+    return source.filter(quiz => {
+      const matchesSubject = filterState.subject === 'all' || quiz?.subject === filterState.subject;
+      const matchesStatus = filterState.status === 'all' || quiz?.status === filterState.status;
+      return matchesSubject && matchesStatus;
+    });
+  }, [apiQuizzes, filterState.subject, filterState.status]);
 
   // Timer effect for timed quizzes
   useEffect(() => {
     let timer;
-    if (currentView === 'quiz' && currentQuiz?.timed && timeRemaining > 0) {
+    const { currentQuiz, timeRemaining } = assessmentState;
+    
+    if (uiState.currentView === 'quiz' && currentQuiz?.timed && timeRemaining > 0) {
       timer = setInterval(() => {
-        setTimeRemaining(prev => {
-          if (prev <= 1) {
+        setAssessmentState(prev => {
+          if (prev.timeRemaining <= 1) {
             handleSubmitQuiz();
-            return 0;
+            return { ...prev, timeRemaining: 0 };
           }
-          return prev - 1;
+          return { ...prev, timeRemaining: prev.timeRemaining - 1 };
         });
       }, 1000);
     }
+    
     return () => clearInterval(timer);
-  }, [currentView, currentQuiz, timeRemaining]);
+  }, [uiState.currentView, assessmentState.currentQuiz, assessmentState.timeRemaining]);
 
   // Auto-save effect
   useEffect(() => {
     let autoSaveTimer;
-    if (currentView === 'quiz' && Object.keys(answers)?.length > 0) {
+    const { answers } = assessmentState;
+
+    if (uiState.currentView === 'quiz' && Object.keys(answers)?.length > 0) {
       autoSaveTimer = setInterval(() => {
-        // Auto-save logic would go here
-        console.log('Auto-saving progress...');
+        try {
+          // Aquí iría la lógica real de auto-guardado al API
+          localStorage.setItem('quizProgress', JSON.stringify({
+            answers,
+            timestamp: new Date().toISOString()
+          }));
+          console.log('Progreso guardado automáticamente');
+        } catch (error) {
+          console.error('Error al guardar el progreso:', error);
+        }
       }, 30000);
     }
+    
     return () => clearInterval(autoSaveTimer);
-  }, [currentView, answers]);
+  }, [uiState.currentView, assessmentState.answers]);
 
   const handleStartQuiz = (quiz) => {
-    setCurrentQuiz(quiz);
-    setCurrentQuestion(0);
-    setAnswers({});
-    setFlaggedQuestions([]);
-    
-    if (quiz?.timed) {
-      setTimeRemaining(quiz?.duration * 60); // Convert minutes to seconds
+    try {
+      setAssessmentState(prev => ({
+        ...prev,
+        currentQuiz: quiz,
+        currentQuestion: 0,
+        answers: {},
+        flaggedQuestions: [],
+        timeRemaining: quiz?.timed ? quiz.duration * 60 : 0,
+        results: null
+      }));
+
+      setUiState(prev => ({
+        ...prev,
+        currentView: 'quiz',
+        loading: false,
+        error: null
+      }));
+    } catch (error) {
+      setUiState(prev => ({
+        ...prev,
+        error: 'Error al iniciar el examen',
+        loading: false
+      }));
     }
-    
-    setCurrentView('quiz');
   };
 
   const handleViewResults = (quiz) => {
-    setCurrentQuiz(quiz);
-    // Mock results data
-    const mockResults = {
-      score: quiz?.lastScore?.score,
-      totalPoints: quiz?.totalPoints,
-      correctAnswers: Math.floor(quiz?.lastScore?.score / quiz?.totalPoints * quiz?.questionCount),
-      incorrectAnswers: quiz?.questionCount - Math.floor(quiz?.lastScore?.score / quiz?.totalPoints * quiz?.questionCount) - 2,
-      unanswered: 2,
-      timeSpent: "78:45",
-      questionResults: Array.from({ length: quiz?.questionCount }, (_, i) => ({
-        correct: Math.random() > 0.3,
-        answered: Math.random() > 0.1,
-        points: Math.random() > 0.3 ? Math.ceil(Math.random() * 5) : 0
-      }))
-    };
-    setCurrentView('results');
+    try {
+      setUiState(prev => ({
+        ...prev,
+        loading: true,
+        error: null
+      }));
+
+      // Simular carga de resultados del API
+      const mockResults = {
+        score: quiz?.lastScore?.score,
+        totalPoints: quiz?.totalPoints,
+        correctAnswers: Math.floor(quiz?.lastScore?.score / quiz?.totalPoints * quiz?.questionCount),
+        incorrectAnswers: quiz?.questionCount - Math.floor(quiz?.lastScore?.score / quiz?.totalPoints * quiz?.questionCount) - 2,
+        unanswered: 2,
+        timeSpent: "78:45",
+        questionResults: Array.from({ length: quiz?.questionCount }, (_, i) => ({
+          correct: Math.random() > 0.3,
+          answered: Math.random() > 0.1,
+          points: Math.random() > 0.3 ? Math.ceil(Math.random() * 5) : 0
+        }))
+      };
+
+      setAssessmentState(prev => ({
+        ...prev,
+        currentQuiz: quiz,
+        results: mockResults
+      }));
+
+      setUiState(prev => ({
+        ...prev,
+        currentView: 'results',
+        loading: false
+      }));
+    } catch (error) {
+      setUiState(prev => ({
+        ...prev,
+        error: 'Error al cargar los resultados',
+        loading: false
+      }));
+    }
   };
 
   const handleAnswerChange = (answer) => {
-    setAnswers(prev => ({
-      ...prev,
-      [currentQuestion]: answer
-    }));
+    try {
+      setAssessmentState(prev => ({
+        ...prev,
+        answers: {
+          ...prev.answers,
+          [prev.currentQuestion]: answer
+        }
+      }));
+    } catch (error) {
+      setUiState(prev => ({
+        ...prev,
+        error: 'Error al guardar la respuesta'
+      }));
+    }
   };
 
   const handleQuestionSelect = (questionIndex) => {
-    setCurrentQuestion(questionIndex);
+    setAssessmentState(prev => ({
+      ...prev,
+      currentQuestion: questionIndex
+    }));
   };
 
   const handleToggleFlag = (questionIndex) => {
-    setFlaggedQuestions(prev => 
-      prev?.includes(questionIndex)
-        ? prev?.filter(q => q !== questionIndex)
-        : [...prev, questionIndex]
-    );
+    setAssessmentState(prev => ({
+      ...prev,
+      flaggedQuestions: prev.flaggedQuestions?.includes(questionIndex)
+        ? prev.flaggedQuestions.filter(q => q !== questionIndex)
+        : [...prev.flaggedQuestions, questionIndex]
+    }));
   };
 
   const handleNextQuestion = () => {
-    if (currentQuestion < currentQuiz?.questions?.length - 1) {
-      setCurrentQuestion(prev => prev + 1);
-    } else {
-      setCurrentView('review');
+    setAssessmentState(prev => {
+      const isLastQuestion = prev.currentQuestion >= prev.currentQuiz?.questions?.length - 1;
+      
+      return {
+        ...prev,
+        currentQuestion: isLastQuestion ? prev.currentQuestion : prev.currentQuestion + 1
+      };
+    });
+
+    if (assessmentState.currentQuestion >= assessmentState.currentQuiz?.questions?.length - 1) {
+      setUiState(prev => ({
+        ...prev,
+        currentView: 'review'
+      }));
     }
   };
 
   const handlePreviousQuestion = () => {
-    if (currentQuestion > 0) {
-      setCurrentQuestion(prev => prev - 1);
-    }
+    setAssessmentState(prev => ({
+      ...prev,
+      currentQuestion: Math.max(0, prev.currentQuestion - 1)
+    }));
   };
 
   const handleQuestionJump = (questionIndex) => {
-    setCurrentQuestion(questionIndex);
-    setCurrentView('quiz');
+    setAssessmentState(prev => ({
+      ...prev,
+      currentQuestion: questionIndex
+    }));
+
+    setUiState(prev => ({
+      ...prev,
+      currentView: 'quiz'
+    }));
   };
 
   const handleSubmitQuiz = async () => {
-    setIsSubmitting(true);
-    
-    // Simulate submission delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Mock results calculation
-    const mockResults = {
-      score: Math.floor(Math.random() * 40) + 60, // Random score between 60-100
-      totalPoints: currentQuiz?.totalPoints,
-      correctAnswers: Math.floor(Math.random() * 10) + 15,
-      incorrectAnswers: Math.floor(Math.random() * 8) + 2,
-      unanswered: Math.floor(Math.random() * 3),
-      timeSpent: currentQuiz?.timed ? `${Math.floor((currentQuiz?.duration * 60 - timeRemaining) / 60)}:${((currentQuiz?.duration * 60 - timeRemaining) % 60)?.toString()?.padStart(2, '0')}` : "N/A",
-      questionResults: currentQuiz?.questions?.map((_, index) => ({
-        correct: Math.random() > 0.3,
-        answered: answers?.[index] !== undefined,
-        points: Math.random() > 0.3 ? Math.ceil(Math.random() * 5) : 0
-      }))
-    };
-    
-    setIsSubmitting(false);
-    setCurrentView('results');
+    try {
+      setUiState(prev => ({
+        ...prev,
+        isSubmitting: true,
+        error: null
+      }));
+
+      // Simulación del envío al API
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      const { currentQuiz, answers, timeRemaining } = assessmentState;
+      
+      // Mock results calculation
+      const mockResults = {
+        score: Math.floor(Math.random() * 40) + 60,
+        totalPoints: currentQuiz?.totalPoints,
+        correctAnswers: Math.floor(Math.random() * 10) + 15,
+        incorrectAnswers: Math.floor(Math.random() * 8) + 2,
+        unanswered: Math.floor(Math.random() * 3),
+        timeSpent: currentQuiz?.timed 
+          ? `${Math.floor((currentQuiz?.duration * 60 - timeRemaining) / 60)}:${
+              ((currentQuiz?.duration * 60 - timeRemaining) % 60)?.toString()?.padStart(2, '0')
+            }` 
+          : "N/A",
+        questionResults: currentQuiz?.questions?.map((_, index) => ({
+          correct: Math.random() > 0.3,
+          answered: answers?.[index] !== undefined,
+          points: Math.random() > 0.3 ? Math.ceil(Math.random() * 5) : 0
+        }))
+      };
+
+      setAssessmentState(prev => ({
+        ...prev,
+        results: mockResults
+      }));
+
+      setUiState(prev => ({
+        ...prev,
+        currentView: 'results',
+        isSubmitting: false
+      }));
+    } catch (error) {
+      setUiState(prev => ({
+        ...prev,
+        error: 'Error al enviar el examen',
+        isSubmitting: false
+      }));
+    }
   };
 
   const handleRetakeQuiz = () => {
-    setCurrentQuestion(0);
-    setAnswers({});
-    setFlaggedQuestions([]);
-    
-    if (currentQuiz?.timed) {
-      setTimeRemaining(currentQuiz?.duration * 60);
+    try {
+      const { currentQuiz } = assessmentState;
+
+      setAssessmentState(prev => ({
+        ...prev,
+        currentQuestion: 0,
+        answers: {},
+        flaggedQuestions: [],
+        timeRemaining: currentQuiz?.timed ? currentQuiz.duration * 60 : 0,
+        results: null
+      }));
+
+      setUiState(prev => ({
+        ...prev,
+        currentView: 'quiz',
+        error: null
+      }));
+    } catch (error) {
+      setUiState(prev => ({
+        ...prev,
+        error: 'Error al reiniciar el examen'
+      }));
     }
-    
-    setCurrentView('quiz');
   };
 
   const handleBackToList = () => {
-    setCurrentView('list');
-    setCurrentQuiz(null);
-    setCurrentQuestion(0);
-    setAnswers({});
-    setFlaggedQuestions([]);
-    setTimeRemaining(0);
+    try {
+      setAssessmentState(prev => ({
+        ...prev,
+        currentQuiz: null,
+        currentQuestion: 0,
+        answers: {},
+        flaggedQuestions: [],
+        timeRemaining: 0,
+        results: null
+      }));
+
+      setUiState(prev => ({
+        ...prev,
+        currentView: 'list',
+        error: null
+      }));
+    } catch (error) {
+      setUiState(prev => ({
+        ...prev,
+        error: 'Error al volver a la lista'
+      }));
+    }
   };
 
   const renderContent = () => {
+    const { 
+      currentQuiz, 
+      currentQuestion, 
+      answers, 
+      flaggedQuestions,
+      results 
+    } = assessmentState;
+
+    const {
+      currentView,
+      isSubmitting,
+      loading,
+      error
+    } = uiState;
+
+  if (loading || quizzesLoading) {
+      return (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
+            <p className="text-muted-foreground">Cargando...</p>
+          </div>
+        </div>
+      );
+    }
+
+  if (error || quizzesError) {
+      return (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <Icon name="AlertTriangle" size={48} className="text-error mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">
+              Se produjo un error
+            </h3>
+            <p className="text-muted-foreground">{error}</p>
+          </div>
+        </div>
+      );
+    }
+
     switch (currentView) {
       case 'quiz':
         return (
@@ -369,19 +437,7 @@ const AssessmentInterface = () => {
         return (
           <QuizResults
             quiz={currentQuiz}
-            results={{
-              score: Math.floor(Math.random() * 40) + 60,
-              totalPoints: currentQuiz?.totalPoints,
-              correctAnswers: Math.floor(Math.random() * 10) + 15,
-              incorrectAnswers: Math.floor(Math.random() * 8) + 2,
-              unanswered: Math.floor(Math.random() * 3),
-              timeSpent: "78:45",
-              questionResults: currentQuiz?.questions?.map(() => ({
-                correct: Math.random() > 0.3,
-                answered: Math.random() > 0.1,
-                points: Math.random() > 0.3 ? Math.ceil(Math.random() * 5) : 0
-              }))
-            }}
+            results={results}
             onRetakeQuiz={handleRetakeQuiz}
           />
         );
@@ -404,22 +460,22 @@ const AssessmentInterface = () => {
                   </div>
                 </div>
 
-                {/* Stats */}
+                {/* Stats (calculados desde la API de quizzes) */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                   <div className="bg-card border border-border rounded-lg p-4 text-center academic-shadow">
-                    <div className="text-2xl font-bold text-primary">4</div>
+                    <div className="text-2xl font-bold text-primary">{(apiQuizzes || []).length}</div>
                     <div className="text-sm text-muted-foreground">Evaluaciones Totales</div>
                   </div>
                   <div className="bg-card border border-border rounded-lg p-4 text-center academic-shadow">
-                    <div className="text-2xl font-bold text-success">1</div>
+                    <div className="text-2xl font-bold text-success">{(apiQuizzes || []).filter(q => q?.status === 'completed').length}</div>
                     <div className="text-sm text-muted-foreground">Completadas</div>
                   </div>
                   <div className="bg-card border border-border rounded-lg p-4 text-center academic-shadow">
-                    <div className="text-2xl font-bold text-warning">1</div>
+                    <div className="text-2xl font-bold text-warning">{(apiQuizzes || []).filter(q => q?.status === 'in-progress').length}</div>
                     <div className="text-sm text-muted-foreground">En Progreso</div>
                   </div>
                   <div className="bg-card border border-border rounded-lg p-4 text-center academic-shadow">
-                    <div className="text-2xl font-bold text-accent">87%</div>
+                    <div className="text-2xl font-bold text-accent">{Math.round(((apiQuizzes || []).reduce((acc, q) => acc + (q?.lastScore?.percentage || 0), 0) / Math.max(1, (apiQuizzes || []).filter(q => q?.lastScore).length)) || 0)}%</div>
                     <div className="text-sm text-muted-foreground">Promedio General</div>
                   </div>
                 </div>
@@ -429,24 +485,26 @@ const AssessmentInterface = () => {
                   <Select
                     label="Filtrar por materia"
                     options={subjectOptions}
-                    value={filterSubject}
-                    onChange={setFilterSubject}
+                    value={filterState.subject}
+                    onChange={subject => setFilterState(prev => ({ ...prev, subject }))}
                     className="w-full sm:w-48"
                   />
                   
                   <Select
                     label="Filtrar por estado"
                     options={statusOptions}
-                    value={filterStatus}
-                    onChange={setFilterStatus}
+                    value={filterState.status}
+                    onChange={status => setFilterState(prev => ({ ...prev, status }))}
                     className="w-full sm:w-48"
                   />
 
                   <Button
                     variant="outline"
                     onClick={() => {
-                      setFilterSubject('all');
-                      setFilterStatus('all');
+                      setFilterState({
+                        subject: 'all',
+                        status: 'all'
+                      });
                     }}
                     iconName="RotateCcw"
                     iconPosition="left"
@@ -480,6 +538,31 @@ const AssessmentInterface = () => {
     }
   };
 
+  const { 
+    currentView,
+    sidebarCollapsed,
+    isSubmitting
+  } = uiState;
+
+  const {
+    currentQuiz,
+    timeRemaining 
+  } = assessmentState;
+
+  // Manejo de guardado de progreso
+  const handleSaveProgress = useCallback(async () => {
+    try {
+      // Aquí iría la lógica real de guardado al API
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('Progreso guardado manualmente');
+    } catch (error) {
+      setUiState(prev => ({
+        ...prev,
+        error: 'Error al guardar el progreso'
+      }));
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
       {currentView === 'list' && <Header />}
@@ -488,7 +571,10 @@ const AssessmentInterface = () => {
         {currentView === 'list' && (
           <Sidebar 
             isCollapsed={sidebarCollapsed} 
-            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} 
+            onToggle={() => setUiState(prev => ({
+              ...prev,
+              sidebarCollapsed: !prev.sidebarCollapsed
+            }))} 
           />
         )}
         
@@ -497,8 +583,8 @@ const AssessmentInterface = () => {
             <QuizHeader
               quiz={currentQuiz}
               timeRemaining={timeRemaining}
-              onSubmit={() => setCurrentView('review')}
-              onSaveProgress={() => console.log('Saving progress...')}
+              onSubmit={() => setUiState(prev => ({ ...prev, currentView: 'review' }))}
+              onSaveProgress={handleSaveProgress}
               isSubmitting={isSubmitting}
             />
           )}

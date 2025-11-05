@@ -3,33 +3,42 @@ import Icon from '../../../components/AppIcon';
 import Image from '../../../components/AppImage';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
+import { useProfile } from '../../../hooks/useProfile';
 
 const ProfileHeader = () => {
   const [isEditing, setIsEditing] = useState(false);
-  const [profileData, setProfileData] = useState({
-    name: "Alex Johnson",
-    email: "alex.johnson@universidad.edu",
-    studentId: "EST-2024-001",
-    major: "Ingeniería en Sistemas",
-    year: "3er Año",
-    gpa: "8.7",
-    joinDate: "Septiembre 2022"
-  });
+  const { profileData, updateProfile, loading, error } = useProfile();
+  const [editData, setEditData] = useState({});
+  const [saving, setSaving] = useState(false);
 
-  const [editData, setEditData] = useState(profileData);
+  React.useEffect(() => {
+    if (profileData) {
+      setEditData(profileData);
+    }
+  }, [profileData]);
+
 
   const handleEdit = () => {
     setIsEditing(true);
     setEditData(profileData);
   };
 
-  const handleSave = () => {
-    setProfileData(editData);
-    setIsEditing(false);
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      await updateProfile(editData);
+      setIsEditing(false);
+    } catch (err) {
+      console.error('Error al guardar cambios:', err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCancel = () => {
-    setEditData(profileData);
+    if (profileData) {
+      setEditData(profileData);
+    }
     setIsEditing(false);
   };
 
@@ -48,8 +57,8 @@ const ProfileHeader = () => {
           <div className="relative">
             <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-primary">
               <Image
-                src="https://images.unsplash.com/photo-1605765356613-7f20ebf0f339"
-                alt="Estudiante universitario sonriente con camisa azul en campus universitario"
+                src={profileData?.avatar || profileData?.image || 'https://images.unsplash.com/photo-1605765356613-7f20ebf0f339'}
+                alt={profileData?.name || 'Foto de perfil'}
                 className="w-full h-full object-cover" />
 
             </div>
@@ -101,28 +110,28 @@ const ProfileHeader = () => {
         <div className="flex flex-col items-center lg:items-end gap-4">
           <div className="flex gap-6 text-center">
             <div>
-              <div className="text-2xl font-bold text-foreground">{profileData?.gpa}</div>
+              <div className="text-2xl font-bold text-foreground">{profileData?.gpa ?? '—'}</div>
               <div className="text-xs text-muted-foreground">Promedio</div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-primary">12</div>
+              <div className="text-2xl font-bold text-primary">{profileData?.coursesCount ?? profileData?.courses?.length ?? 0}</div>
               <div className="text-xs text-muted-foreground">Cursos</div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-success">85%</div>
+              <div className="text-2xl font-bold text-success">{(profileData?.progressPercent ?? profileData?.overallProgress ?? 0) + '%'}</div>
               <div className="text-xs text-muted-foreground">Progreso</div>
             </div>
           </div>
 
           {isEditing ?
           <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleCancel}>
+              <Button variant="outline" size="sm" onClick={handleCancel} disabled={saving}>
                 <Icon name="X" size={16} className="mr-1" />
                 Cancelar
               </Button>
-              <Button variant="default" size="sm" onClick={handleSave}>
+              <Button variant="default" size="sm" onClick={handleSave} disabled={saving}>
                 <Icon name="Check" size={16} className="mr-1" />
-                Guardar
+                {saving ? 'Guardando...' : 'Guardar'}
               </Button>
             </div> :
 
@@ -135,10 +144,10 @@ const ProfileHeader = () => {
       </div>
       {/* Additional Info */}
       <div className="mt-6 pt-6 border-t border-border">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
           <div>
             <span className="text-muted-foreground">Fecha de Ingreso:</span>
-            <span className="ml-2 font-medium text-foreground">{profileData?.joinDate}</span>
+            <span className="ml-2 font-medium text-foreground">{profileData?.joinDate || profileData?.enrolledAt || '—'}</span>
           </div>
           <div>
             <span className="text-muted-foreground">Estado:</span>
@@ -149,13 +158,13 @@ const ProfileHeader = () => {
           </div>
           <div>
             <span className="text-muted-foreground">Último Acceso:</span>
-            <span className="ml-2 font-medium text-foreground">Hoy, 14:30</span>
+            <span className="ml-2 font-medium text-foreground">{profileData?.lastAccess ? new Date(profileData.lastAccess).toLocaleString() : '—'}</span>
           </div>
           <div>
             <span className="text-muted-foreground">Racha de Estudio:</span>
             <span className="ml-2 inline-flex items-center font-medium text-accent">
               <Icon name="Flame" size={12} className="mr-1" />
-              7 días
+              {profileData?.studyStreak ? `${profileData.studyStreak} días` : '—'}
             </span>
           </div>
         </div>

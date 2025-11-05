@@ -1,43 +1,44 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import { Checkbox } from '../../../components/ui/Checkbox';
+import { useProfile } from '../../../hooks/useProfile';
 
 const SettingsPanel = () => {
   const [activeTab, setActiveTab] = useState('profile');
-  const [settings, setSettings] = useState({
-    // Profile Settings
-    firstName: 'Alex',
-    lastName: 'Johnson',
-    email: 'alex.johnson@universidad.edu',
-    phone: '+34 612 345 678',
-    bio: 'Estudiante de Ingeniería en Sistemas apasionado por el desarrollo web y la inteligencia artificial.',
-    
-    // Privacy Settings
-    profileVisibility: 'public',
-    showEmail: false,
-    showPhone: false,
-    showProgress: true,
-    showAchievements: true,
-    
-    // Notification Settings
-    emailNotifications: true,
-    pushNotifications: true,
-    courseUpdates: true,
-    assignmentReminders: true,
-    gradeNotifications: true,
-    discussionReplies: false,
-    weeklyReport: true,
-    
-    // Preferences
-    language: 'es',
-    timezone: 'Europe/Madrid',
-    theme: 'light',
-    dateFormat: 'DD/MM/YYYY',
-    timeFormat: '24h'
-  });
+  const [settings, setSettings] = useState(null);
+  const { profileData } = useProfile();
+
+  useEffect(() => {
+    // Seed settings from profileData if available
+    if (profileData) {
+      setSettings(prev => ({
+        ...prev,
+        firstName: profileData?.firstName || profileData?.name || '',
+        lastName: profileData?.lastName || '',
+        email: profileData?.email || '',
+        phone: profileData?.phone || '',
+        bio: profileData?.bio || '',
+        language: profileData?.preferences?.language || 'es',
+        timezone: profileData?.preferences?.timezone || 'Europe/Madrid',
+        theme: profileData?.preferences?.theme || 'light',
+        profileVisibility: profileData?.privacy?.visibility || 'public',
+        showEmail: profileData?.privacy?.showEmail ?? false,
+        showPhone: profileData?.privacy?.showPhone ?? false
+      }));
+    } else if (!settings) {
+      // default shape while loading
+      setSettings({
+        firstName: '', lastName: '', email: '', phone: '', bio: '',
+        profileVisibility: 'public', showEmail: false, showPhone: false, showProgress: true, showAchievements: true,
+        emailNotifications: true, pushNotifications: true, courseUpdates: true, assignmentReminders: true,
+        gradeNotifications: true, discussionReplies: false, weeklyReport: true,
+        language: 'es', timezone: 'Europe/Madrid', theme: 'light', dateFormat: 'DD/MM/YYYY', timeFormat: '24h'
+      });
+    }
+  }, [profileData]);
 
   const tabs = [
     { id: 'profile', name: 'Perfil', icon: 'User' },

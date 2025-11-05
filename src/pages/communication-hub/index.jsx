@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '../../components/ui/Header';
 import Sidebar from '../../components/ui/Sidebar';
 import ChatSidebar from './components/ChatSidebar';
@@ -7,6 +7,7 @@ import ConsultationScheduler from './components/ConsultationScheduler';
 import NotificationPanel from './components/NotificationPanel';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
+import http from '../../config/http';
 
 const CommunicationHub = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -16,25 +17,41 @@ const CommunicationHub = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [selectedProfessor, setSelectedProfessor] = useState(null);
 
-  const professors = [
-  {
-    id: 1,
-    name: "Dr. María González",
-    department: "Departamento de Matemáticas",
-    avatar: "https://images.unsplash.com/photo-1704455304918-9096fc53e795",
-    avatarAlt: "Professional headshot of Hispanic woman with dark hair in white lab coat",
-    specialties: ["Cálculo", "Álgebra Lineal", "Estadística"],
-    availability: "Martes y Jueves 2:00 - 4:00 PM"
-  },
-  {
-    id: 2,
-    name: "Prof. Luis Hernández",
-    department: "Departamento de Física",
-    avatar: "https://images.unsplash.com/photo-1713946598186-8e28275719b9",
-    avatarAlt: "Middle-aged man with glasses wearing dark suit in professional setting",
-    specialties: ["Física Cuántica", "Mecánica", "Termodinámica"],
-    availability: "Lunes, Miércoles y Viernes 10:00 AM - 12:00 PM"
-  }];
+  const [professors, setProfessors] = useState([]);
+  const [professorsError, setProfessorsError] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchProfessors = async () => {
+      try {
+        // Intentamos obtener la lista de profesores desde el backend.
+        // Si la ruta exacta no existe, fallback será la lista vacía.
+        const resp = await http.get('/users?role=ROLE_TEACHER');
+        if (!mounted) return;
+        setProfessors(resp.data || []);
+        setProfessorsError(null);
+      } catch (err) {
+        console.warn('No se pudo obtener profesores desde /users?role=ROLE_TEACHER, intentando /users?role=teacher', err?.message);
+        try {
+          const resp2 = await http.get('/users?role=teacher');
+          if (!mounted) return;
+          setProfessors(resp2.data || []);
+          setProfessorsError(null);
+        } catch (err2) {
+          console.warn('No se pudo obtener profesores desde /users?role=teacher', err2?.message);
+          if (!mounted) return;
+          setProfessorsError(err2?.message || 'Error al cargar profesores');
+          // Fallback ligero: mantener empty array and UI will still work
+          setProfessors([]);
+        }
+      }
+    };
+
+    fetchProfessors();
+
+    return () => { mounted = false; };
+  }, []);
 
 
   const handleChatSelect = (chat) => {

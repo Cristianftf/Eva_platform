@@ -2,10 +2,15 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import Icon from '../AppIcon';
 import Button from './Button';
+import { useAuth } from '../../Context/AuthContext';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
+  const { user, userProfile } = useAuth();
+
+  const displayName = userProfile?.full_name || user?.name || user?.email || 'Usuario';
+  const displayRole = userProfile?.role ? String(userProfile.role).charAt(0).toUpperCase() + String(userProfile.role).slice(1) : (userProfile?.roleRaw || 'Usuario');
 
   const navigationItems = [
     { name: 'Dashboard', path: '/student-dashboard', icon: 'LayoutDashboard' },
@@ -99,12 +104,21 @@ const Header = () => {
           {/* Profile */}
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-              <Icon name="User" size={16} className="text-primary-foreground" />
-            </div>
-            <div className="hidden md:block">
-              <p className="text-sm font-medium text-foreground">Alex Johnson</p>
-              <p className="text-xs text-muted-foreground">Student</p>
-            </div>
+                {/* show avatar if available, otherwise User icon */}
+                {userProfile?.avatar || userProfile?.profilePicture || user?.avatar ? (
+                  <img
+                    src={userProfile?.avatar || userProfile?.profilePicture || user?.avatar}
+                    alt={userProfile?.full_name || user?.email || 'avatar'}
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <Icon name="User" size={16} className="text-primary-foreground" />
+                )}
+              </div>
+              <div className="hidden md:block">
+                <p className="text-sm font-medium text-foreground">{displayName}</p>
+                <p className="text-xs text-muted-foreground">{displayRole}</p>
+              </div>
           </div>
 
           {/* Mobile Menu Button */}

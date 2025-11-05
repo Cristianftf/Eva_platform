@@ -3,10 +3,12 @@ import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Cart
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Select from '../../../components/ui/Select';
+import { useProfile } from '../../../hooks/useProfile';
 
 const ProgressAnalytics = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('semester');
   const [selectedMetric, setSelectedMetric] = useState('grades');
+  const { analytics, loading, error } = useProfile();
 
   const periodOptions = [
     { value: 'week', label: 'Última Semana' },
@@ -22,72 +24,30 @@ const ProgressAnalytics = () => {
     { value: 'participation', label: 'Participación' }
   ];
 
-  // Mock data for different charts
-  const gradesTrend = [
-    { month: 'Ago', promedio: 8.2, matematicas: 8.5, fisica: 7.8, programacion: 8.7, ingles: 7.9 },
-    { month: 'Sep', promedio: 8.4, matematicas: 8.7, fisica: 8.1, programacion: 8.9, ingles: 8.2 },
-    { month: 'Oct', promedio: 8.6, matematicas: 8.9, fisica: 8.3, programacion: 9.1, ingles: 8.4 },
-    { month: 'Nov', promedio: 8.7, matematicas: 9.0, fisica: 8.5, programacion: 9.2, ingles: 8.6 }
-  ];
+  const gradesTrend = analytics?.gradesTrend || [];
 
-  const studyActivity = [
-    { day: 'Lun', horas: 4.5, sesiones: 3 },
-    { day: 'Mar', horas: 3.2, sesiones: 2 },
-    { day: 'Mié', horas: 5.1, sesiones: 4 },
-    { day: 'Jue', horas: 2.8, sesiones: 2 },
-    { day: 'Vie', horas: 4.0, sesiones: 3 },
-    { day: 'Sáb', horas: 6.2, sesiones: 4 },
-    { day: 'Dom', horas: 3.5, sesiones: 2 }
-  ];
+  const studyActivity = analytics?.studyActivity || [];
 
-  const courseCompletion = [
-    { curso: 'Matemáticas III', completado: 85, total: 100 },
-    { curso: 'Física II', completado: 72, total: 100 },
-    { curso: 'Programación Web', completado: 94, total: 100 },
-    { curso: 'Inglés Técnico', completado: 68, total: 100 },
-    { curso: 'Base de Datos', completado: 91, total: 100 }
-  ];
+  const courseCompletion = analytics?.courseCompletion || [];
 
-  const studyPatterns = [
-    { name: 'Mañana (6-12)', value: 35, color: '#3B82F6' },
-    { name: 'Tarde (12-18)', value: 45, color: '#10B981' },
-    { name: 'Noche (18-24)', value: 20, color: '#F59E0B' }
-  ];
+  const studyPatterns = analytics?.studyPatterns || [];
 
-  const performanceMetrics = [
-    {
-      title: "Promedio General",
-      value: "8.7",
-      change: "+0.3",
-      trend: "up",
-      icon: "TrendingUp",
-      color: "text-success"
-    },
-    {
-      title: "Horas de Estudio",
-      value: "28.3h",
-      change: "+2.1h",
-      trend: "up",
-      icon: "Clock",
-      color: "text-primary"
-    },
-    {
-      title: "Tasa de Completación",
-      value: "82%",
-      change: "+5%",
-      trend: "up",
-      icon: "CheckCircle",
-      color: "text-success"
-    },
-    {
-      title: "Participación",
-      value: "94%",
-      change: "-2%",
-      trend: "down",
-      icon: "MessageSquare",
-      color: "text-warning"
-    }
-  ];
+  const performanceMetrics = analytics?.performanceMetrics || [];
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96 text-error">
+        <p>Error al cargar los datos analíticos: {error}</p>
+      </div>
+    );
+  }
 
   const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 

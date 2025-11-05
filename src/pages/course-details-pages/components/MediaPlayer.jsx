@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
+import http from '../../../config/http';
 
 const MediaPlayer = ({ content, onProgress, onComplete }) => {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -12,6 +13,28 @@ const MediaPlayer = ({ content, onProgress, onComplete }) => {
   const [notes, setNotes] = useState([]);
   const [newNote, setNewNote] = useState('');
   const [showNotes, setShowNotes] = useState(false);
+  const [loadingNotes, setLoadingNotes] = useState(false);
+  const [errorNotes, setErrorNotes] = useState(null);
+  
+  // Fetch notes when component mounts
+  useEffect(() => {
+    const fetchNotes = async () => {
+      try {
+        setLoadingNotes(true);
+        const response = await http.get(`/content/${content.id}/notes`);
+        setNotes(response.data || []);
+      } catch (error) {
+        console.error('Error loading notes:', error);
+        setErrorNotes(error.message || 'Error loading notes');
+      } finally {
+        setLoadingNotes(false);
+      }
+    };
+    
+    if (content?.id) {
+      fetchNotes();
+    }
+  }, [content?.id]);
   
   const videoRef = useRef(null);
   const controlsTimeoutRef = useRef(null);
@@ -81,16 +104,24 @@ const MediaPlayer = ({ content, onProgress, onComplete }) => {
     return `${minutes}:${seconds?.toString()?.padStart(2, '0')}`;
   };
 
-  const addNote = () => {
+  const addNote = async () => {
     if (newNote?.trim()) {
-      const note = {
-        id: Date.now(),
-        time: currentTime,
-        content: newNote,
-        timestamp: new Date()?.toISOString()
-      };
-      setNotes([...notes, note]);
-      setNewNote('');
+      try {
+        setLoadingNotes(true);
+        const resp = await http.post(`/content/${content.id}/notes`, {
+          time: currentTime,
+          content: newNote
+        });
+        const savedNote = resp.data;
+        setNotes(prev => [...prev, savedNote]);
+        setNewNote('');
+        setErrorNotes(null);
+      } catch (error) {
+        console.error('Error saving note:', error);
+        setErrorNotes(error.message);
+      } finally {
+        setLoadingNotes(false);
+      }
     }
   };
 

@@ -4,18 +4,52 @@ import Image from '../../../components/AppImage';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import { Checkbox } from '../../../components/ui/Checkbox';
+import { useQuizState } from '../hooks/useQuizState';
+import { useParams } from 'react-router-dom';
 
-const QuestionDisplay = ({ 
-  question, 
-  questionIndex, 
-  totalQuestions, 
-  answer, 
-  onAnswerChange, 
-  onNext, 
-  onPrevious,
-  isFirst,
-  isLast 
-}) => {
+const QuestionDisplay = () => {
+  const { quizId } = useParams();
+  const { 
+    currentQuestion: question,
+    currentQuestionIndex,
+    quiz,
+    answers,
+    setAnswer,
+    handleNext,
+    handlePrevious,
+    isFirst,
+    isLast,
+    loading,
+    error,
+    timeLeft,
+    saving,
+    savedAt
+  } = useQuizState(quizId);
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mb-4"></div>
+          <p className="text-muted-foreground">Cargando examen...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center text-destructive">
+          <Icon name="AlertTriangle" size={48} className="mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Error al cargar el examen</h3>
+          <p className="text-muted-foreground">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const answer = answers[currentQuestionIndex];
   const renderQuestionContent = () => {
     switch (question?.type) {
       case 'multiple-choice':
@@ -180,7 +214,7 @@ const QuestionDisplay = ({
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-4">
               <span className="text-sm font-medium text-muted-foreground">
-                Pregunta {questionIndex + 1} de {totalQuestions}
+                Pregunta {currentQuestionIndex + 1} de {quiz?.questions?.length}
               </span>
               <div className="flex items-center space-x-2">
                 <Icon name="Award" size={16} className="text-accent" />
@@ -188,11 +222,17 @@ const QuestionDisplay = ({
                   {question?.points} {question?.points === 1 ? 'punto' : 'puntos'}
                 </span>
               </div>
+              <div className="flex items-center space-x-2">
+                <Icon name="Clock" size={16} className="text-warning" />
+                <span className="text-sm font-medium text-warning">
+                  {timeLeft}
+                </span>
+              </div>
             </div>
             <div className="w-48 bg-muted rounded-full h-2">
               <div
                 className="bg-primary h-2 rounded-full transition-all duration-300"
-                style={{ width: `${((questionIndex + 1) / totalQuestions) * 100}%` }}
+                style={{ width: `${((currentQuestionIndex + 1) / quiz?.questions?.length) * 100}%` }}
               />
             </div>
           </div>
@@ -247,8 +287,14 @@ const QuestionDisplay = ({
           </Button>
 
           <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-            <Icon name="Save" size={16} />
-            <span>Guardado automáticamente</span>
+            <Icon name="Save" size={16} className={saving ? 'animate-bounce' : ''} />
+            <span>
+              {saving 
+                ? 'Guardando...' 
+                : savedAt 
+                  ? `Guardado ${new Date(savedAt).toLocaleTimeString()}` 
+                  : 'Guardado automático activado'}
+            </span>
           </div>
 
           <Button
